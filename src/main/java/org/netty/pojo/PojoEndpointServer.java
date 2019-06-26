@@ -19,10 +19,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * @author Yeauty
- * @version 1.0
- */
+
 public class PojoEndpointServer {
 
     private static final AttributeKey POJO_KEY = AttributeKey.valueOf("WEBSOCKET_IMPLEMENT");
@@ -30,6 +27,8 @@ public class PojoEndpointServer {
     private static final AttributeKey<Session> SESSION_KEY = AttributeKey.valueOf("WEBSOCKET_SESSION");
 
     private static final AttributeKey<String> PATH_KEY = AttributeKey.valueOf("WEBSOCKET_PATH");
+
+    public static final AttributeKey HEAR_BEAT = AttributeKey.valueOf("heartbeat");
 
     private final Map<String, PojoMethodMapping> pathMethodMappingMap = new HashMap<>();
 
@@ -176,6 +175,7 @@ public class PojoEndpointServer {
             TextWebSocketFrame textFrame = (TextWebSocketFrame) frame;
             Object implement = ctx.channel().attr(POJO_KEY).get();
             Session session = ctx.channel().attr(SESSION_KEY).get();
+            ctx.channel().attr(HEAR_BEAT).set(System.currentTimeMillis());
             try {
                 methodMapping.getOnMessage().invoke(implement, methodMapping.getOnMessageArgs(session, textFrame.text()));
             } catch (Throwable t) {
@@ -203,6 +203,7 @@ public class PojoEndpointServer {
             content.readBytes(bytes);
             Object implement = ctx.channel().attr(POJO_KEY).get();
             Session session = ctx.channel().attr(SESSION_KEY).get();
+            ctx.channel().attr(HEAR_BEAT).set(System.currentTimeMillis());
             try {
                 methodMapping.getOnBinary().invoke(implement, methodMapping.getOnBinaryArgs(session, bytes));
             } catch (Throwable t) {
@@ -226,8 +227,62 @@ public class PojoEndpointServer {
         if (methodMapping.getOnEvent() != null) {
             Object implement = ctx.channel().attr(POJO_KEY).get();
             Session session = ctx.channel().attr(SESSION_KEY).get();
+            long hearHeat=System.currentTimeMillis();
+            ctx.channel().attr(HEAR_BEAT).set(hearHeat);
             try {
-                methodMapping.getOnEvent().invoke(implement, methodMapping.getOnEventArgs(session, evt));
+                methodMapping.getOnEvent().invoke(implement, methodMapping.getOnEventArgs(session, evt,hearHeat));
+            } catch (Throwable t) {
+                logger.error(t);
+            }
+        }
+    }
+
+    public void doOnPing(ChannelHandlerContext ctx, WebSocketFrame frame) {
+        if (!isOpened){
+            return;
+        }
+        Attribute<String> attrPath = ctx.channel().attr(PATH_KEY);
+        PojoMethodMapping methodMapping = null;
+        if (pathMethodMappingMap.size() == 1) {
+            methodMapping = pathMethodMappingMap.values().iterator().next();
+        } else {
+            String path = attrPath.get();
+            methodMapping = pathMethodMappingMap.get(path);
+        }
+        if (methodMapping.getOnPing() != null) {
+            TextWebSocketFrame textFrame = (TextWebSocketFrame) frame;
+            Object implement = ctx.channel().attr(POJO_KEY).get();
+            Session session = ctx.channel().attr(SESSION_KEY).get();
+            long hearHeat=System.currentTimeMillis();
+            ctx.channel().attr(HEAR_BEAT).set(hearHeat);
+            try {
+                methodMapping.getOnPing().invoke(implement, methodMapping.getOnPingArgs(session,textFrame.text(),hearHeat));
+            } catch (Throwable t) {
+                logger.error(t);
+            }
+        }
+    }
+
+    public void doOnPong(ChannelHandlerContext ctx, WebSocketFrame frame) {
+        if (!isOpened){
+            return;
+        }
+        Attribute<String> attrPath = ctx.channel().attr(PATH_KEY);
+        PojoMethodMapping methodMapping = null;
+        if (pathMethodMappingMap.size() == 1) {
+            methodMapping = pathMethodMappingMap.values().iterator().next();
+        } else {
+            String path = attrPath.get();
+            methodMapping = pathMethodMappingMap.get(path);
+        }
+        if (methodMapping.getOnPong() != null) {
+            TextWebSocketFrame textFrame = (TextWebSocketFrame) frame;
+            Object implement = ctx.channel().attr(POJO_KEY).get();
+            Session session = ctx.channel().attr(SESSION_KEY).get();
+            long hearHeat=System.currentTimeMillis();
+            ctx.channel().attr(HEAR_BEAT).set(hearHeat);
+            try {
+                methodMapping.getOnPong().invoke(implement, methodMapping.getOnPongArgs(session,textFrame.text(),hearHeat));
             } catch (Throwable t) {
                 logger.error(t);
             }

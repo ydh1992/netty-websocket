@@ -44,11 +44,6 @@ class WebSocketServerHandler extends SimpleChannelInboundHandler<WebSocketFrame>
             pojoEndpointServer.doOnMessage(ctx, frame);
             return;
         }
-        if (frame instanceof PingWebSocketFrame) {
-            //region 判断是否是ping消息
-            ctx.writeAndFlush(new PongWebSocketFrame(frame.content().retain()));
-            return;
-        }
         if (frame instanceof CloseWebSocketFrame) {
             //region 判断是否是关闭链路的指令
             ctx.writeAndFlush(frame.retainedDuplicate()).addListener(ChannelFutureListener.CLOSE);
@@ -59,48 +54,20 @@ class WebSocketServerHandler extends SimpleChannelInboundHandler<WebSocketFrame>
             pojoEndpointServer.doOnBinary(ctx, frame);
             return;
         }
-        if (frame instanceof PongWebSocketFrame) {
+//        if (frame instanceof PingWebSocketFrame) {
+//            //region 判断是否是ping消息
+//            ctx.writeAndFlush(new PongWebSocketFrame(frame.content().retain()));
+//            return;
+//        }
+        if (frame instanceof PingWebSocketFrame) {
+            //是否是ping消息
+            pojoEndpointServer.doOnPing(ctx,frame);
             return;
         }
-    }
-    @Override
-    public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
-        //channel注册
-        super.channelRegistered(ctx);
-    }
-
-    @Override
-    public void channelUnregistered(ChannelHandlerContext ctx) throws Exception {
-        //channel注册
-        super.channelUnregistered(ctx);
-    }
-
-    @Override
-    public void channelActive(ChannelHandlerContext ctx) throws Exception {
-        //channel活跃状态
-        super.channelActive(ctx);
-    }
-    @Override
-    public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
-        //channel读取数据完毕
-        super.channelReadComplete(ctx);
-    }
-
-    @Override
-    public void channelWritabilityChanged(ChannelHandlerContext ctx) throws Exception {
-        //channel可写事件更改
-        super.channelWritabilityChanged(ctx);
-    }
-
-    @Override
-    public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
-        //助手类添加
-        super.handlerAdded(ctx);
-    }
-
-    @Override
-    public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
-        //助手类移除
-        super.handlerRemoved(ctx);
+        if (frame instanceof PongWebSocketFrame) {
+            //是否是pong消息
+            pojoEndpointServer.doOnPong(ctx,frame);
+            return;
+        }
     }
 }

@@ -47,7 +47,7 @@ public abstract class Middleware extends ChannelInboundHandlerAdapter{
 
         heartbeatCount++;
 
-        System.out.println(name + " send ping msg to " + ctx.channel().remoteAddress() + "count :" + heartbeatCount);
+        System.out.println(name + " send PING msg to " + ctx.channel().remoteAddress() + "count :" + heartbeatCount);
     }
 
     private void sendPongMsg(ChannelHandlerContext ctx) {
@@ -60,7 +60,7 @@ public abstract class Middleware extends ChannelInboundHandlerAdapter{
 
         heartbeatCount++;
 
-        System.out.println(name +" send pong msg to "+ctx.channel().remoteAddress() +" , count :" + heartbeatCount);
+        System.out.println(name +" send PONG msg to "+ctx.channel().remoteAddress() +" , count :" + heartbeatCount);
     }
 
     @Override
@@ -84,16 +84,16 @@ public abstract class Middleware extends ChannelInboundHandlerAdapter{
     }
 
     protected void handlerAllIdle(ChannelHandlerContext ctx) {
-        System.err.println("---ALL_IDLE---");       
+        System.err.println("---全部空闲---");
     }
 
     protected void handlerWriterIdle(ChannelHandlerContext ctx) {
-        System.err.println("---WRITER_IDLE---");        
+        System.err.println("---写空闲---");
     }
 
 
     protected void handlerReaderIdle(ChannelHandlerContext ctx) {
-        System.err.println("---READER_IDLE---");    
+        System.err.println("---读空闲---");
     }
 
     @Override

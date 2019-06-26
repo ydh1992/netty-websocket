@@ -7,10 +7,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/**
- * @author Yeauty
- * @version 1.0
- */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface ServerEndpoint {
@@ -34,7 +30,7 @@ public @interface ServerEndpoint {
     /**
      * if this property is not empty, means configure with application.properties
      */
-    String prefix() default "";
+    String prefix() default "netty-websocket";
 
     //------------------------- option -------------------------
 

@@ -20,12 +20,16 @@ public class PojoMethodMapping {
     private final Method onMessage;
     private final Method onBinary;
     private final Method onEvent;
+    private final Method onPing;
+    private final Method onPong;
     private final PojoPathParam[] onOpenParams;
     private final PojoPathParam[] onCloseParams;
     private final PojoPathParam[] onErrorParams;
     private final PojoPathParam[] onMessageParams;
     private final PojoPathParam[] onBinaryParams;
     private final PojoPathParam[] onEventParams;
+    private final PojoPathParam[] onPingtParams;
+    private final PojoPathParam[] onPongParams;
     private final Class pojoClazz;
     private final ApplicationContext applicationContext;
     private boolean hasParameterMap = false;
@@ -39,6 +43,8 @@ public class PojoMethodMapping {
         Method message = null;
         Method binary = null;
         Method event = null;
+        Method ping = null;
+        Method pong = null;
         Method[] pojoClazzMethods = null;
         Class<?> currentClazz = pojoClazz;
         while (!currentClazz.equals(Object.class)) {
@@ -119,8 +125,29 @@ public class PojoMethodMapping {
                                     "pojoMethodMapping.duplicateAnnotation OnEvent");
                         }
                     }
-                } else {
-                    // Method not annotated
+                } else if (method.getAnnotation(OnPing.class) != null) {
+                    checkPublic(method);
+                    if (ping == null) {
+                        ping = method;
+                    } else {
+                        if (currentClazz == pojoClazz ||
+                                !isMethodOverride(ping, method)) {
+                            // Duplicate annotation
+                            throw new DeploymentException(
+                                    "pojoMethodMapping.duplicateAnnotation OnPing");
+                        }
+                    }
+                }else if (method.getAnnotation(OnPong.class) != null) {
+                    checkPublic(method);
+                    if (pong == null) {
+                        pong = method;
+                    } else {
+                        if (currentClazz == pojoClazz ||
+                                !isMethodOverride(pong, method)) {
+                            // Duplicate annotation
+                            throw new DeploymentException("pojoMethodMapping.duplicateAnnotation OnPong");
+                        }
+                    }
                 }
             }
             currentClazz = currentClazz.getSuperclass();
@@ -158,18 +185,34 @@ public class PojoMethodMapping {
             }
         }
 
+        if (ping != null && ping.getDeclaringClass() != pojoClazz) {
+            if (isOverridenWithoutAnnotation(pojoClazzMethods, ping, OnPing.class)) {
+                ping = null;
+            }
+        }
+
+        if (pong != null && pong.getDeclaringClass() != pojoClazz) {
+            if (isOverridenWithoutAnnotation(pojoClazzMethods, pong, OnPong.class)) {
+                pong = null;
+            }
+        }
+
         this.onOpen = open;
         this.onClose = close;
         this.onError = error;
         this.onMessage = message;
         this.onBinary = binary;
         this.onEvent = event;
+        this.onPing = ping;
+        this.onPong = pong;
         onOpenParams = getPathParams(onOpen, MethodType.ON_OPEN);
         onCloseParams = getPathParams(onClose, MethodType.ON_CLOSE);
         onErrorParams = getPathParams(onError, MethodType.ON_ERROR);
         onMessageParams = getPathParams(onMessage, MethodType.ON_MESSAGE);
         onBinaryParams = getPathParams(onBinary, MethodType.ON_BINARY);
         onEventParams = getPathParams(onEvent, MethodType.ON_EVENT);
+        onPingtParams = getPathParams(onPing, MethodType.ON_PING);
+        onPongParams = getPathParams(onPong, MethodType.ON_PONG);
 
         for (PojoPathParam onOpenParam : onOpenParams) {
             if (ParameterMap.class.equals(onOpenParam.getType())) {
@@ -185,8 +228,7 @@ public class PojoMethodMapping {
 
     private void checkPublic(Method m) throws DeploymentException {
         if (!Modifier.isPublic(m.getModifiers())) {
-            throw new DeploymentException(
-                    "pojoMethodMapping.methodNotPublic " + m.getName());
+            throw new DeploymentException("pojoMethodMapping.methodNotPublic " + m.getName());
         }
     }
 
@@ -218,7 +260,7 @@ public class PojoMethodMapping {
     }
 
     public Object[] getOnOpenArgs(Session session, HttpHeaders headers, ParameterMap parameterMap) {
-        return buildArgs(onOpenParams, session, headers, null, null, null, null, parameterMap);
+        return buildArgs(onOpenParams, session, headers, null, null, null, null, parameterMap,null);
     }
 
     public Method getOnClose() {
@@ -226,7 +268,7 @@ public class PojoMethodMapping {
     }
 
     public Object[] getOnCloseArgs(Session session) {
-        return buildArgs(onCloseParams, session, null, null, null, null, null, null);
+        return buildArgs(onCloseParams, session, null, null, null, null, null, null,null);
     }
 
     public Method getOnError() {
@@ -234,7 +276,7 @@ public class PojoMethodMapping {
     }
 
     public Object[] getOnErrorArgs(Session session, Throwable throwable) {
-        return buildArgs(onErrorParams, session, null, null, null, throwable, null, null);
+        return buildArgs(onErrorParams, session, null, null, null, throwable, null, null,null);
     }
 
     public Method getOnMessage() {
@@ -242,7 +284,7 @@ public class PojoMethodMapping {
     }
 
     public Object[] getOnMessageArgs(Session session, String text) {
-        return buildArgs(onMessageParams, session, null, text, null, null, null, null);
+        return buildArgs(onMessageParams, session, null, text, null, null, null, null,null);
     }
 
     public Method getOnBinary() {
@@ -250,15 +292,31 @@ public class PojoMethodMapping {
     }
 
     public Object[] getOnBinaryArgs(Session session, byte[] bytes) {
-        return buildArgs(onBinaryParams, session, null, null, bytes, null, null, null);
+        return buildArgs(onBinaryParams, session, null, null, bytes, null, null, null,null);
     }
 
     public Method getOnEvent() {
         return onEvent;
     }
 
-    public Object[] getOnEventArgs(Session session, Object evt) {
-        return buildArgs(onEventParams, session, null, null, null, null, evt, null);
+    public Object[] getOnEventArgs(Session session, Object evt,Long lastTime) {
+        return buildArgs(onEventParams, session, null, null, null, null, evt, null,lastTime);
+    }
+
+    public Method getOnPing() {
+        return onPing;
+    }
+
+    public Object[] getOnPingArgs(Session session, String text,Long lastTime) {
+        return buildArgs(onPingtParams, session, null, text, null, null, null, null,lastTime);
+    }
+
+    public Method getOnPong() {
+        return onPong;
+    }
+
+    public Object[] getOnPongArgs(Session session, String text,Long lastTime) {
+        return buildArgs(onPongParams, session, null, text, null, null, null, null,lastTime);
     }
 
     private static PojoPathParam[] getPathParams(Method m, MethodType methodType) throws DeploymentException {
@@ -272,6 +330,10 @@ public class PojoMethodMapping {
             Class<?> type = types[i];
             if (type.equals(Session.class)) {
                 result[i] = new PojoPathParam(type, "session");
+            } else if (type.equals(Long.class)) {
+                result[i] = new PojoPathParam(type, "lastTime");
+            } else if (type.equals(String.class)) {
+                result[i] = new PojoPathParam(type, "text");
             } else if (methodType == MethodType.ON_OPEN &&
                     type.equals(HttpHeaders.class)) {
                 result[i] = new PojoPathParam(type, "headers");
@@ -282,15 +344,18 @@ public class PojoMethodMapping {
                     && type.equals(Throwable.class)) {
                 foundThrowable = true;
                 result[i] = new PojoPathParam(type, "throwable");
-            } else if (methodType == MethodType.ON_MESSAGE &&
-                    type.equals(String.class)) {
-                result[i] = new PojoPathParam(type, "text");
             } else if (methodType == MethodType.ON_BINARY &&
                     type.equals(byte[].class)) {
                 result[i] = new PojoPathParam(type, "binary");
             } else if (methodType == MethodType.ON_EVENT &&
                     type.equals(Object.class)) {
                 result[i] = new PojoPathParam(type, "event");
+            }  else if (methodType == MethodType.ON_PING &&
+                    type.equals(Object.class)) {
+                result[i] = new PojoPathParam(type, "ping");
+            }  else if (methodType == MethodType.ON_PONG &&
+                    type.equals(Object.class)) {
+                result[i] = new PojoPathParam(type, "pong");
             } else if (type.getSimpleName().equals("Session") && !type.equals(Session.class)) {
                 throw new DeploymentException(
                         "expect to import Session not " + type.getName());
@@ -314,7 +379,7 @@ public class PojoMethodMapping {
 
     private static Object[] buildArgs(PojoPathParam[] pathParams, Session session,
                                       HttpHeaders headers, String text, byte[] bytes,
-                                      Throwable throwable, Object evt, ParameterMap parameterMap) {
+                                      Throwable throwable, Object evt, ParameterMap parameterMap,Long lastTime) {
         Object[] result = new Object[pathParams.length];
         for (int i = 0; i < pathParams.length; i++) {
             Class<?> type = pathParams[i].getType();
@@ -332,6 +397,8 @@ public class PojoMethodMapping {
                 result[i] = evt;
             } else if (type.equals(ParameterMap.class)) {
                 result[i] = parameterMap;
+            } else if (type.equals(Long.class)) {
+                result[i] = lastTime;
             }
         }
         return result;
@@ -343,6 +410,8 @@ public class PojoMethodMapping {
         ON_MESSAGE,
         ON_BINARY,
         ON_EVENT,
+        ON_PING,
+        ON_PONG,
         ON_ERROR
     }
 }
